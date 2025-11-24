@@ -30,21 +30,22 @@ install.packages("mBAT.multipop_0.0.0.9000.tar.gz", repos = NULL, type = "source
 This section provides basic examples of the `mBAT.multipop` package’s
 core functionalities: running the LD matrix preparation, performing the
 core gene-based association test (mBAT-Global), and demonstrating the
-optional GCTA integration.
+optional GCTA integration. 
 
-### 1. LD Matrix Preparation (Utility)
-
-Use the LD_matrix utility to calculate population-specific LD matrices
-using GCTB prior to running the core analysis.
+Sample files can be found in the “/inst/extdata/” directory 
+### 1. LD Matrix Preparation (Utility) Use
+the LD_matrix utility to calculate population-specific LD matrices using
+GCTB prior to running the core analysis.
 
 ``` r
 # Assuming GCTB and PLINK are installed and in PATH
-# ⚠️ Set appropriate paths for your reference data
+# Set appropriate paths for your reference data
 ldm_results <- mBAT.multipop::LD_matrix(
   gctb_bin         = "gctb", 
   map_file         = file.path(data_dir, "your_gene_map.txt"),
   plink_bfile_pop1 = "path/to/pop1/reference_panel",
   plink_bfile_pop2 = "path/to/pop2/reference_panel",
+  extend = 50000,
   result_prefix    = file.path(tempdir(), "ld_prep_output")
 )
 
@@ -60,7 +61,7 @@ tests. This requires pre-calculated LD matrix files.
 ``` r
 library(mBAT.multipop)
 
-# ⚠️ Replace these placeholders with actual paths to your example files
+# Replace these placeholders with actual paths to your example files
 data_dir <- system.file("extdata", package = "mBAT.multipop")
 
 results <- mBAT_multipop(
@@ -71,6 +72,8 @@ results <- mBAT_multipop(
   LD_path_pop1      = file.path(data_dir, "pop1_ld_matrices"), # Directory containing .ldm files
   LD_path_pop2      = file.path(data_dir, "pop2_ld_matrices"),
   result_prefix     = file.path(tempdir(), "analysis_results"),
+  prop         = 0.9,
+  af_threshold = 0.2,
   run_gcta          = FALSE # Run core functionality only
 )
 
@@ -84,7 +87,7 @@ This demonstrates running GCTA’s mBAT-combo test alongside the core
 analysis, using PLINK files from the same reference panel.
 
 ``` r
-# ⚠️ This requires GCTA (gcta64) to be available in your system's PATH.
+# This requires GCTA (gcta64) to be available in your system's PATH.
 plink_prefix <- file.path(data_dir, "your_bfile_prefix")
 
 gcta_integrated_results <- mBAT_multipop(
@@ -99,5 +102,3 @@ gcta_integrated_results <- mBAT_multipop(
 # Check the generated GCTA output files
 print(list.files(tempdir(), pattern = "gcta.*mbat", full.names = TRUE))
 ```
-# mBAT.multipop
-A new method for gene-based association analysis
