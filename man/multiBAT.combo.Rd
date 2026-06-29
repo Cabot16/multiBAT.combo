@@ -62,3 +62,9 @@ Reads GWAS summaries and per-gene LD matrices, applies allele flipping, then
 wraps up with \code{mbat_SVD()} for the chi-square statistic and p-value.
 Includes optional GCTA mBAT-combo integration and multiBAT-combo ACAT analysis.
 }
+\details{
+GCTB LD information files are standardised internally. The SNP identifier
+column can be either \code{ID} or \code{snp}. The allele frequency column can
+be either \code{A1Freq} or \code{A2Freq}. If only \code{A2Freq} is available,
+\code{A1Freq} is derived as \code{1 - A2Freq}.
+}
