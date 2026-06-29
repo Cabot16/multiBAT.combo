@@ -1,0 +1,24 @@
+Package: multiBAT.combo
+Title: Multi-Ancestry Gene-Based Association Testing for Complex Trait
+        Discovery
+Version: 0.0.1.2000
+Authors@R: 
+    person(
+        given = "Wenfeng",
+        family = "Yi",
+        email = "yiwenfeng@stu.scu.edu.cn",
+        role = c("aut", "cre")
+    )
+Description: 
+    Implements multiBAT-combo, a multi-ancestry gene-based association testing framework that integrates GWAS summary statistics and population-specific LD information to improve gene discovery for complex traits. The package supports allele harmonisation, gene-level SNP mapping, per-gene LD matrix processing, block-diagonal joint LD construction, SVD-based multiBAT testing, and optional integration of population-specific GCTA mBAT-combo results through a weighted ACAT-based combination framework. The method is designed to aggregate association signals from genetically diverse populations, increase effective sample size, improve detection of shared gene-level associations, and avoid relying on a single LD reference for multi-ancestry data. The implementation builds on the original mBAT-combo framework developed by Ang Li.
+License: MIT + file LICENSE
+Encoding: UTF-8
+Roxygen: list(markdown = TRUE)
+RoxygenNote: 7.3.2
+Imports: data.table, dplyr, magrittr, parallel, snpsettest, stats
+Suggests: testthat (>= 3.0.0), withr
+Config/testthat/edition: 3
+NeedsCompilation: no
+Packaged: 2026-06-29 01:39:39 UTC; yiwenfeng
+Author: Wenfeng Yi [aut, cre]
+Maintainer: Wenfeng Yi <yiwenfeng@stu.scu.edu.cn>
