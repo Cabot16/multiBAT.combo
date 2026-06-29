@@ -4,6 +4,11 @@
 #' wraps up with \code{mbat_SVD()} for the chi-square statistic and p-value.
 #' Includes optional GCTA mBAT-combo integration and multiBAT-combo ACAT analysis.
 #'
+#' GCTB LD information files are standardised internally. The SNP identifier
+#' column can be either \code{ID} or \code{snp}. The allele frequency column can
+#' be either \code{A1Freq} or \code{A2Freq}. If only \code{A2Freq} is available,
+#' \code{A1Freq} is derived as \code{1 - A2Freq}.
+#'
 #' @param bim_file Path to PLINK *.bim file with columns chr, snp, bp, pos, A1, A2.
 #' @param map_file Gene annotation file without header: chr, start, end, gene.id.
 #' @param assoc_pop1 GWAS summary for pop1 with columns snp, A1, A2, AF1, beta, se, P, N.
@@ -47,7 +52,6 @@ multiBAT.combo <- function(
     plink_bfile_pop2 = NULL
 ) {
 
-    # --- Log setup and functions ---
     log_file_path <- paste0(result_prefix, ".log")
     log_conn <- file(log_file_path, "a")
 
@@ -63,9 +67,102 @@ multiBAT.combo <- function(
     log_warn <- function(msg, console_print = FALSE) log_to_file(msg, "WARN", console_print)
     log_error <- function(msg, console_print = FALSE) log_to_file(msg, "ERROR", console_print)
 
+    find_col <- function(dat, candidates) {
+        idx <- match(tolower(candidates), tolower(names(dat)))
+        idx <- idx[!is.na(idx)]
+
+        if (length(idx) == 0) {
+            return(NA_character_)
+        }
+
+        names(dat)[idx[1]]
+    }
+
+    standardize_ld_info <- function(prefix) {
+        info_file <- paste0(prefix, ".info")
+
+        if (!file.exists(info_file)) {
+            warning("LD info file not found: ", info_file, call. = FALSE)
+            return(NULL)
+        }
+
+        info <- tryCatch(
+            fread(info_file),
+            error = function(e) {
+                warning("Failed to read LD info file: ", info_file, ". ", e$message, call. = FALSE)
+                return(NULL)
+            }
+        )
+
+        if (is.null(info) || nrow(info) == 0) {
+            warning("LD info file contains no SNPs: ", info_file, call. = FALSE)
+            return(NULL)
+        }
+
+        snp_col <- find_col(info, c("snp", "SNP", "ID", "id"))
+        a1_col <- find_col(info, c("A1", "a1"))
+        a2_col <- find_col(info, c("A2", "a2"))
+        pos_col <- find_col(info, c("PhysPos", "physpos", "POS", "pos", "BP", "bp"))
+        a1freq_col <- find_col(info, c("A1Freq", "a1freq", "AF1", "af1"))
+        a2freq_col <- find_col(info, c("A2Freq", "a2freq", "AF2", "af2"))
+
+        if (anyNA(c(snp_col, a1_col, a2_col))) {
+            warning(
+                "LD info file must contain SNP identifier, A1, and A2 columns: ",
+                info_file,
+                call. = FALSE
+            )
+            return(NULL)
+        }
+
+        info[, snp := as.character(get(snp_col))]
+        info[, A1 := as.character(get(a1_col))]
+        info[, A2 := as.character(get(a2_col))]
+
+        if (!is.na(pos_col)) {
+            info[, PhysPos := get(pos_col)]
+        } else {
+            info[, PhysPos := seq_len(nrow(info))]
+        }
+
+        if (!is.na(a1freq_col)) {
+            info[, A1Freq := suppressWarnings(as.numeric(get(a1freq_col)))]
+        } else if (!is.na(a2freq_col)) {
+            info[, A1Freq := 1 - suppressWarnings(as.numeric(get(a2freq_col)))]
+        } else {
+            warning(
+                "LD info file must contain either A1Freq or A2Freq: ",
+                info_file,
+                call. = FALSE
+            )
+            return(NULL)
+        }
+
+        if (anyNA(info$snp) || anyDuplicated(info$snp)) {
+            warning(
+                "LD info file contains missing or duplicated SNP identifiers: ",
+                info_file,
+                call. = FALSE
+            )
+            return(NULL)
+        }
+
+        info
+    }
+
+    find_ld_prefix <- function(bin_files, gene) {
+        target <- paste0(gene, ".ldm.full.bin")
+        f <- bin_files[basename(bin_files) == target]
+
+        if (length(f) > 0) {
+            return(sub("\\.bin$", "", f[1]))
+        }
+
+        NA_character_
+    }
+
     log_info("Starting multiBAT.combo", console_print = TRUE)
 
-    # Initialize counters
     stats <- list(
         multipop_success = 0,
         multipop_ld_missing = 0,
@@ -79,7 +176,6 @@ multiBAT.combo <- function(
         if (isOpen(log_conn)) close(log_conn)
     })
 
-    ## 1. Load gene annotation & GWAS
     log_info(sprintf("Reading map_file: %s", map_file))
     gene_annot_raw <- fread(map_file, header = FALSE)
     setnames(gene_annot_raw, c("chr", "start", "end", "gene.id"))
@@ -114,7 +210,6 @@ multiBAT.combo <- function(
         }
     }
 
-    ## 2. Map SNP -> gene
     bim_map <- bim[, .(id = snp, chr, pos)]
     snp2gene_df <- snpsettest::map_snp_to_gene(
         info_snp = bim_map,
@@ -138,7 +233,6 @@ multiBAT.combo <- function(
     setnames(snp_gene, "gene.id", "gene")
     snp_gene <- na.omit(snp_gene)
 
-    ## 3. Pre-merge GWAS & split by gene
     m1 <- merge(snp_gene, gwas1, by = "snp")
     m2 <- merge(snp_gene, gwas2, by = "snp")
     setkey(m1, gene)
@@ -147,27 +241,24 @@ multiBAT.combo <- function(
     m1_list <- split(m1, by = "gene", keep.by = FALSE)
     m2_list <- split(m2, by = "gene", keep.by = FALSE)
 
-    ## 4. Pre-scan LD .bin files
-    bins1_all <- list.files(LD_path_pop1, pattern = "\\.bin$", full.names = TRUE)
-    bins2_all <- list.files(LD_path_pop2, pattern = "\\.bin$", full.names = TRUE)
+    bins1_all <- list.files(LD_path_pop1, pattern = "\\.ldm\\.full\\.bin$", full.names = TRUE)
+    bins2_all <- list.files(LD_path_pop2, pattern = "\\.ldm\\.full\\.bin$", full.names = TRUE)
 
-    ## 5. Identify valid genes (Multipop)
     genes1 <- intersect(names(m1_list), names(m2_list))
 
-    gene_prefix1 <- setNames(sapply(genes1, function(g) {
-        f <- bins1_all[grep(paste0("^", g, "\\."), basename(bins1_all), perl = TRUE)]
-        if (length(f)) sub("\\.bin$", "", f[1]) else NA_character_
-    }, USE.NAMES = TRUE), genes1)
+    gene_prefix1 <- setNames(
+        vapply(genes1, function(g) find_ld_prefix(bins1_all, g), character(1)),
+        genes1
+    )
 
-    gene_prefix2 <- setNames(sapply(genes1, function(g) {
-        f <- bins2_all[grep(paste0("^", g, "\\."), basename(bins2_all), perl = TRUE)]
-        if (length(f)) sub("\\.bin$", "", f[1]) else NA_character_
-    }, USE.NAMES = TRUE), genes1)
+    gene_prefix2 <- setNames(
+        vapply(genes1, function(g) find_ld_prefix(bins2_all, g), character(1)),
+        genes1
+    )
 
     valid_genes <- genes1[!is.na(gene_prefix1) & !is.na(gene_prefix2)]
     stats$multipop_ld_missing <- length(genes1[is.na(gene_prefix1) | is.na(gene_prefix2)])
 
-    ## 6. Worker: process one gene (multipop)
     process_gene <- function(g) {
         prefix1 <- gene_prefix1[[g]]
         prefix2 <- gene_prefix2[[g]]
@@ -184,8 +275,12 @@ multiBAT.combo <- function(
             return(skip_gene("Insufficient GWAS data"))
         }
 
-        info1 <- fread(paste0(prefix1, ".info"))
-        common1 <- intersect(g1$snp, info1$ID)
+        info1 <- standardize_ld_info(prefix1)
+        if (is.null(info1)) {
+            return(skip_gene("POP1: Failed to read LD info"))
+        }
+
+        common1 <- intersect(g1$snp, info1$snp)
         if (!length(common1)) {
             return(skip_gene("POP1: No common SNPs"))
         }
@@ -195,12 +290,20 @@ multiBAT.combo <- function(
             return(skip_gene("POP1: Failed to read LD matrix"))
         }
 
-        rownames(LD1_raw) <- colnames(LD1_raw) <- info1$ID
+        if (nrow(LD1_raw) != nrow(info1) || ncol(LD1_raw) != nrow(info1)) {
+            return(skip_gene("POP1: LD matrix dimension does not match LD info"))
+        }
+
+        rownames(LD1_raw) <- colnames(LD1_raw) <- info1$snp
         g1_qc <- qc_gwas_op(g1, data.frame(snp = common1, stringsAsFactors = FALSE))
         R1_qc <- qc_LD_op(g1_qc, LD1_raw, data.frame(snp = common1, stringsAsFactors = FALSE))
 
-        info2 <- fread(paste0(prefix2, ".info"))
-        common2 <- intersect(g2$snp, info2$ID)
+        info2 <- standardize_ld_info(prefix2)
+        if (is.null(info2)) {
+            return(skip_gene("POP2: Failed to read LD info"))
+        }
+
+        common2 <- intersect(g2$snp, info2$snp)
         if (!length(common2)) {
             return(skip_gene("POP2: No common SNPs"))
         }
@@ -210,7 +313,11 @@ multiBAT.combo <- function(
             return(skip_gene("POP2: Failed to read LD matrix"))
         }
 
-        rownames(LD2_raw) <- colnames(LD2_raw) <- info2$ID
+        if (nrow(LD2_raw) != nrow(info2) || ncol(LD2_raw) != nrow(info2)) {
+            return(skip_gene("POP2: LD matrix dimension does not match LD info"))
+        }
+
+        rownames(LD2_raw) <- colnames(LD2_raw) <- info2$snp
         g2_qc <- qc_gwas_op(g2, data.frame(snp = common2, stringsAsFactors = FALSE))
         R2_qc <- qc_LD_op(g2_qc, LD2_raw, data.frame(snp = common2, stringsAsFactors = FALSE))
 
@@ -225,7 +332,7 @@ multiBAT.combo <- function(
 
         df1_b <- allele_flip_gwas_beta(
             g1_qc[match(common_snps, snp)],
-            info1[match(common_snps, ID), ],
+            info1[match(common_snps, snp)],
             no_AF = FALSE,
             af_threshold = af_threshold
         )
@@ -235,7 +342,7 @@ multiBAT.combo <- function(
 
         df2_b <- allele_flip_gwas_beta(
             g2_qc[match(common_snps, snp)],
-            info2[match(common_snps, ID), ],
+            info2[match(common_snps, snp)],
             no_AF = FALSE,
             af_threshold = af_threshold
         )
@@ -301,7 +408,6 @@ multiBAT.combo <- function(
         }
     }
 
-    ## 7. Multipop execution
     log_info("Executing Multipop analysis...")
     results <- lapply(valid_genes, function(g) tryCatch(process_gene(g), error = function(e) {
         log_error(sprintf("Gene %s (Joint) error: %s", g, e$message))
@@ -309,20 +415,19 @@ multiBAT.combo <- function(
     }))
     out_df <- rbindlist(Filter(Negate(is.null), results))
 
-    ## 8. Single-pop execution
     log_info("Executing Single-pop analysis...")
     genes_pop1_only <- setdiff(names(m1_list), names(m2_list))
     genes_pop2_only <- setdiff(names(m2_list), names(m1_list))
 
-    gene_prefix1_single <- setNames(sapply(genes_pop1_only, function(g) {
-        f <- bins1_all[grep(paste0("^", g, "\\."), basename(bins1_all), perl = TRUE)]
-        if (length(f)) sub("\\.bin$", "", f[1]) else NA_character_
-    }, USE.NAMES = TRUE), genes_pop1_only)
+    gene_prefix1_single <- setNames(
+        vapply(genes_pop1_only, function(g) find_ld_prefix(bins1_all, g), character(1)),
+        genes_pop1_only
+    )
 
-    gene_prefix2_single <- setNames(sapply(genes_pop2_only, function(g) {
-        f <- bins2_all[grep(paste0("^", g, "\\."), basename(bins2_all), perl = TRUE)]
-        if (length(f)) sub("\\.bin$", "", f[1]) else NA_character_
-    }, USE.NAMES = TRUE), genes_pop2_only)
+    gene_prefix2_single <- setNames(
+        vapply(genes_pop2_only, function(g) find_ld_prefix(bins2_all, g), character(1)),
+        genes_pop2_only
+    )
 
     stats$singlepop_ld_missing <- sum(is.na(gene_prefix1_single)) + sum(is.na(gene_prefix2_single))
 
@@ -344,8 +449,12 @@ multiBAT.combo <- function(
             return(skip_gene_single("No GWAS data"))
         }
 
-        info <- fread(paste0(prefix, ".info"))
-        common <- intersect(gdat$snp, info$ID)
+        info <- standardize_ld_info(prefix)
+        if (is.null(info)) {
+            return(skip_gene_single("Failed to read LD info"))
+        }
+
+        common <- intersect(gdat$snp, info$snp)
         if (!length(common)) {
             return(skip_gene_single("No common SNPs"))
         }
@@ -355,7 +464,11 @@ multiBAT.combo <- function(
             return(skip_gene_single("Failed to read LD matrix"))
         }
 
-        rownames(LD_raw) <- colnames(LD_raw) <- info$ID
+        if (nrow(LD_raw) != nrow(info) || ncol(LD_raw) != nrow(info)) {
+            return(skip_gene_single("LD matrix dimension does not match LD info"))
+        }
+
+        rownames(LD_raw) <- colnames(LD_raw) <- info$snp
         g_qc <- qc_gwas_op(gdat, data.frame(snp = common, stringsAsFactors = FALSE))
         R_qc <- qc_LD_op(g_qc, LD_raw, data.frame(snp = common, stringsAsFactors = FALSE))
 
@@ -372,7 +485,7 @@ multiBAT.combo <- function(
 
         df_b <- allele_flip_gwas_beta(
             g_qc,
-            info[match(ordered_snps, ID), ],
+            info[match(ordered_snps, snp)],
             no_AF = FALSE,
             af_threshold = af_threshold
         )
@@ -444,7 +557,6 @@ multiBAT.combo <- function(
     }
     single_out <- rbindlist(Filter(Negate(is.null), single_results))
 
-    ## 9. Run GCTA Analysis
     if (run_gcta) {
         if (!is.null(plink_bfile_pop1) && !is.null(plink_bfile_pop2)) {
             gcta_wind_kb <- extend / 1000
@@ -469,7 +581,6 @@ multiBAT.combo <- function(
         }
     }
 
-    ## 10. Run multiBAT-combo Analysis (Weighted ACATO)
     log_info("Starting final multiBAT-combo P-value merging...")
     out_df_final <- copy(out_df)
 
@@ -514,7 +625,6 @@ multiBAT.combo <- function(
         }
     }
 
-    ## 11. Write outputs
     if (nrow(out_df_final) > 0) {
         cols <- names(out_df_final)
         main_cols <- setdiff(cols, c("No.Eigenvalues", "Chisq_mBAT", "P_multiBAT", "P_multiBAT.combo"))
