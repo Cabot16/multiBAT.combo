@@ -1,33 +1,33 @@
 
 <!-- README.md is generated from README.Rmd. Please edit that file -->
 
-# mBAT.multipop
+# multiBAT.combo
 
 <!-- badges: start -->
 
 <!-- badges: end -->
 
-mBAT.multipop is developed based on the mBAT-combo package
+multiBAT.combo is developed based on the mBAT-combo package
 (<https://github.com/Share-AL-work/mBAT.combo>) to enhance the ability
 to identify function-related genes by increasing the cross-ethnic sample
 size. We further proposed a combined method, MBAT-Global, by integrating
 the single-population mBAT analysis results achieved by gcta with the
-MBAT.multipop results, to reduce the impact of excessive differences in
+multiBAT.combo results, to reduce the impact of excessive differences in
 available sample sizes among different ethnic groups on the results. In
 addition, we offer an extra LD_matrix feature to quickly build available
 LD matrices through gctb software and reference plink files
 
 ## Installation
 
-You can install the development version of mBAT.multipop like so:
+You can install the development version of multiBAT.combo like so:
 
 ``` r
-install.packages("mBAT.multipop_0.0.0.9000.tar.gz", repos = NULL, type = "source")
+install.packages("multiBAT.combo_0.0.1.2000.tar.gz", repos = NULL, type = "source")
 ```
 
 ## Example
 
-This section provides basic examples of the `mBAT.multipop` package’s
+This section provides basic examples of the `multiBAT.combo` package’s
 core functionalities: running the LD matrix preparation, performing the
 core gene-based association test (mBAT-Global), and demonstrating the
 optional GCTA integration. Sample files can be found in the
@@ -38,7 +38,7 @@ GCTB prior to running the core analysis.
 ``` r
 # Assuming GCTB and PLINK are installed and in PATH
 # Set appropriate paths for your reference data
-ldm_results <- mBAT.multipop::LD_matrix(
+ldm_results <- multiBAT.combo::LD_matrix(
   gctb_bin         = "gctb", 
   map_file         = file.path(data_dir, "your_gene_map.txt"),
   plink_bfile_pop1 = "path/to/pop1/reference_panel",
@@ -51,18 +51,18 @@ ldm_results <- mBAT.multipop::LD_matrix(
 print(ldm_results)
 ```
 
-### 2. Gene-Based Association Testing (mBAT-Global & Single-pop)
+### 2. Gene-Based Association Testing (multiBAT.combo & Single-pop)
 
 The primary function for joint analysis and single-population mBAT-combo
 tests. This requires pre-calculated LD matrix files.
 
 ``` r
-library(mBAT.multipop)
+library(multiBAT.combo)
 
 # Replace these placeholders with actual paths to your example files
-data_dir <- system.file("extdata", package = "mBAT.multipop")
+data_dir <- system.file("extdata", package = "multiBAT.combo")
 
-results <- mBAT_multipop(
+results <- multiBAT.combo(
   bim_file          = file.path(data_dir, "your_bfile.bim"),
   map_file          = file.path(data_dir, "your_gene_map.txt"),
   assoc_pop1        = file.path(data_dir, "pop1_gwas.ma"),
@@ -88,7 +88,7 @@ analysis, using PLINK files from the same reference panel.
 # This requires GCTA (gcta64) to be available in your system's PATH.
 plink_prefix <- file.path(data_dir, "your_bfile_prefix")
 
-gcta_integrated_results <- mBAT_multipop(
+gcta_integrated_results <- multiBAT.combo(
   # ... (all input parameters from Example 1) ...
   run_gcta          = TRUE,
   gcta_bin          = "gcta64",
