@@ -7,26 +7,35 @@
 allele_flip_gwas_beta(gwas, info_LD, no_AF, af_threshold = 0.2)
 }
 \arguments{
-\item{gwas}{A data frame containing GWAS summary statistics. Must include columns:
-\code{snp}, \code{A1}, \code{A2}, \code{beta}, and \code{AF1}.}
+\item{gwas}{A data frame containing GWAS summary statistics. Must include
+columns \code{snp}, \code{A1}, \code{A2}, \code{beta}, and \code{AF1}.}
 
-\item{info_LD}{A data frame containing reference LD information. Must include columns:
-\code{ID}, \code{PhysPos}, \code{A1}, \code{A2}, and \code{A1Freq}.}
+\item{info_LD}{A data frame containing reference LD information. Must include
+allele columns \code{A1} and \code{A2}, a SNP identifier column
+\code{ID} or \code{snp}, and either \code{A1Freq} or \code{A2Freq}.}
 
-\item{no_AF}{Logical. If \code{TRUE}, skips filtering based on allele frequency difference.}
+\item{no_AF}{Logical. If \code{TRUE}, skips filtering based on allele
+frequency difference.}
 
-\item{af_threshold}{Numeric. Threshold for filtering SNPs based on absolute allele
-frequency difference. Default is \code{0.2}.}
+\item{af_threshold}{Numeric. Threshold for filtering SNPs based on absolute
+allele frequency difference. Default is \code{0.2}.}
 }
 \value{
-A \code{data.table} with matched and flipped SNPs, adjusted beta values,
-allele frequencies, and LD-aligned alleles. Returns \code{NULL} if no SNPs
-are retained after allele matching or allele-frequency filtering.
+A \code{data.table} with matched and flipped SNPs, adjusted beta
+values, allele frequencies, and LD-aligned alleles. Returns \code{NULL}
+if no SNPs are retained after allele matching or allele-frequency filtering.
 }
 \description{
 This function compares GWAS allele information with a reference LD panel,
 flips mismatched alleles, adjusts beta values and allele frequencies,
 and optionally filters SNPs based on allele frequency differences.
+}
+\details{
+The LD information table can contain either \code{A1Freq} or \code{A2Freq}.
+If \code{A1Freq} is unavailable but \code{A2Freq} is available,
+\code{A1Freq} is derived as \code{1 - A2Freq}. The SNP identifier column can
+be either \code{ID} or \code{snp}. The physical position column
+\code{PhysPos} is used for ordering when available.
 }
 \examples{
 gwas <- data.frame(
@@ -35,6 +44,7 @@ gwas <- data.frame(
   A2   = c("T", "C"),
   beta = c(0.2, -0.5),
   AF1  = c(0.1, 0.2),
+  P    = c(0.01, 0.20),
   stringsAsFactors = FALSE
 )
 
@@ -43,7 +53,7 @@ ld_info <- data.frame(
   PhysPos = c(100, 200),
   A1      = c("A", "C"),
   A2      = c("T", "G"),
-  A1Freq  = c(0.1, 0.8),
+  A2Freq  = c(0.9, 0.2),
   stringsAsFactors = FALSE
 )
 
