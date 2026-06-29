@@ -29,6 +29,14 @@ This package uses the following naming convention:
 - `multiBAT-combo` is used for output and display labels.
 - `mBAT-combo` refers to the original single-population method
   implemented in GCTA.
+  
+## Simulation script
+
+A simulation script for reproducing the two-SNP power comparison is included in:
+
+```text
+inst/scripts/multiBAT_combo_power_simulation.R
+```
 
 ## Installation
 
