@@ -32,10 +32,10 @@ This package uses the following naming convention:
   
 ## Simulation script
 
-A simulation script for reproducing the two-SNP power comparison is included in:
+Simulation scripts for reproducing the two-SNP power comparison is included in:
 
 ```text
-inst/scripts/multiBAT_combo_power_simulation.R
+inst/scripts/multiBAT_combo_power_simulation*.R
 ```
 
 ## Installation
