@@ -21,7 +21,11 @@ devtools::install()
 
 ## External software requirements
 
-The recommended analysis workflow does not require external association testing software.
+`multiBAT.combo()` requires pre-computed population-specific LD matrices for gene-level association testing. These LD matrices should be generated using `LD_matrix()`, which relies on external software:
+
+- `LD_matrix()` requires GCTB and PLINK.
+
+After LD matrices have been prepared, the main gene-based association testing workflow can be performed entirely within R.
 
 The recommended usage is:
 
@@ -29,14 +33,17 @@ The recommended usage is:
 run_gcta = FALSE
 ```
 
-In this mode, `multiBAT.combo()` performs population-specific mBAT calculations internally in R and combines results using the multiBAT-combo framework.
+In this mode, `multiBAT.combo()` calculates population-specific mBAT statistics internally in R and combines them with the joint multiBAT statistic using the multiBAT-combo framework. This mode provides a fully integrated workflow without requiring GCTA.
 
-Optional external software:
+Alternatively, users can specify:
 
-- `LD_matrix()` requires GCTB and PLINK.
-- `multiBAT.combo(run_gcta = TRUE)` requires GCTA.
+```r
+run_gcta = TRUE
+```
 
-The GCTA mode is provided as an optional compatibility workflow for users who want to incorporate population-specific GCTA mBAT-combo results. It is not required for the standard workflow.
+to enable optional GCTA mBAT-combo integration. In this mode, population-specific mBAT-combo analyses are performed using the external GCTA implementation before being combined with the joint multiBAT result.
+
+Because GCTA is implemented in C and may provide faster computation in some large-scale analyses, this option can be useful when computational efficiency is a priority. However, we recommend the internal R implementation (`run_gcta = FALSE`) as the standard workflow because it avoids additional software dependencies and provides a unified analysis pipeline within `multiBAT.combo()`.
 
 ## Input files
 
