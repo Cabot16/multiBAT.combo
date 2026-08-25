@@ -371,4 +371,4 @@ head(res$multipop)
 
 ## Acknowledgements
 
-This implementation builds on the original `mBAT-combo` framework developed by Ang Li.
+This implementation builds on the original `mBAT-combo` framework developed by Ang Li (https://github.com/Share-AL-work/mBAT.combo).
