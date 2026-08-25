@@ -163,15 +163,24 @@ This option is recommended for users who want to inspect the contribution of eac
 
 ## Sample size information
 
-The GWAS sample size column:
+By default, `multiBAT.combo()` obtains population-specific sample sizes from the GWAS summary statistics files using the sample size column:
 
 ```text
 N
 ```
 
-is required.
+The sample size information is used in the weighted ACAT procedure to account for sample-size imbalance between populations and determine the contribution of population-specific association signals.
 
-The sample size information is used in the weighted ACAT procedure to account for sample-size imbalance between populations. Users should provide accurate population-specific sample sizes.
+Alternatively, users can directly specify population-specific sample sizes through:
+
+```r
+N_pop1
+N_pop2
+```
+
+in the `multiBAT.combo()` function. When provided, these user-specified values are used instead of the sample size information extracted from the GWAS summary statistics.
+
+Accurate population-specific sample sizes should be provided because they affect the weighting of population-specific components in the multiBAT-combo association framework.
 
 ## Optional GCTA mBAT-combo integration
 
@@ -190,9 +199,6 @@ gcta_bin
 plink_bfile_pop1
 plink_bfile_pop2
 ```
-
-This mode requires GCTA installation and is intended for advanced users.
-
 ## Output files
 
 ### Default mode
@@ -268,15 +274,6 @@ res <- multiBAT.combo(
 
 head(res$multipop)
 ```
-
-This test uses the internal R implementation and does not require GCTA.
-
-## Notes
-
-- Alleles are harmonised against the LD reference panel before gene-level testing.
-- SNPs with large allele-frequency differences can be filtered using `af_threshold`.
-- Gene-specific failures are recorded in the log.
-- `run_gcta = FALSE` does not require GCTA.
 
 ## Acknowledgements
 
