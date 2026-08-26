@@ -6,7 +6,7 @@
 
 `multiBAT.combo` provides an R implementation of `multiBAT-combo`, a multi-ancestry gene-based association testing framework for complex trait discovery. The method integrates population-specific GWAS summary statistics and linkage disequilibrium (LD) information to jointly evaluate gene-level association signals across populations.
 
-The standard workflow uses two population-specific GWAS summary statistics files together with ancestry-matched LD matrices. `multiBAT.combo()` combines the joint multi-ancestry multiBAT result with population-specific mBAT results using a weighted aggregated Cauchy association test (ACAT) to generate the final multiBAT-combo gene-level association P value.
+The standard workflow uses two population-specific GWAS summary statistics files together with ancestry-matched LD matrices. `multiBAT.combo()` combines the joint multi-ancestry multiBAT result with population-specific results using a weighted aggregated Cauchy association test (ACAT) to generate the final multiBAT-combo gene-level association P value.
 
 ## Workflow overview
 
@@ -17,14 +17,6 @@ A typical analysis consists of the following steps:
 3. Generate population-specific gene-level LD matrices using `LD_matrix()`.
 4. Run `multiBAT.combo()` using the GWAS summary statistics and corresponding LD matrices.
 5. Examine the final gene-level association results in `<result_prefix>.multipop.txt`.
-
-The recommended workflow uses:
-
-```r
-run_gcta = FALSE
-```
-
-In this mode, population-specific mBAT statistics are calculated internally in R and no GCTA installation is required for the main association analysis.
 
 ## Installation
 
@@ -42,53 +34,57 @@ devtools::install()
 
 ## External software requirements
 
-`multiBAT.combo()` requires pre-computed population-specific LD matrices for gene-level association testing. These LD matrices should be generated using `LD_matrix()`, which relies on external software:
+`multiBAT.combo()` requires population-specific LD matrices in GCTB format for gene-based association testing.
 
-- `LD_matrix()` requires GCTB and PLINK.
+For users starting from PLINK genotype reference data, the package provides `LD_matrix()` as a convenient way to generate the required LD matrices. `LD_matrix()` uses predefined settings to extract gene-region genotype data from PLINK files and construct gene-level LD matrices using GCTB.
 
-After LD matrices have been prepared, the main gene-based association testing workflow can be performed entirely within R.
+`LD_matrix()` relies on:
 
-The recommended usage is:
+* **GCTB**, for constructing the LD matrices;
+* **PLINK**, for extracting genotype data for individual gene regions.
 
-```r
-run_gcta = FALSE
-```
-
-In this mode, `multiBAT.combo()` calculates population-specific mBAT statistics internally in R and combines them with the joint multiBAT statistic using the multiBAT-combo framework. This mode provides a fully integrated workflow without requiring GCTA.
-
-Alternatively, users can specify:
-
-```r
-run_gcta = TRUE
-```
-
-to enable optional GCTA mBAT-combo integration. In this mode, population-specific mBAT-combo analyses are performed using the external GCTA implementation before being combined with the joint multiBAT result.
-
-Because GCTA is implemented in C and may provide faster computation in some large-scale analyses, this option can be useful when computational efficiency is a priority. However, we recommend the internal R implementation (`run_gcta = FALSE`) as the standard workflow because it avoids additional software dependencies and provides a unified analysis pipeline within `multiBAT.combo()`.
+Users who already have population-specific LD matrices in the required GCTB format do not need to run `LD_matrix()` and can provide the existing LD matrices directly to `multiBAT.combo()` through `LD_path_pop1` and `LD_path_pop2`.
 
 ## Input files
 
 ### PLINK BIM file
 
-The PLINK `.bim` file should contain six columns:
+The PLINK `.bim` file is used to provide the genomic position and allele information for each SNP during gene annotation and allele matching.
+
+The file should follow the standard PLINK BIM format with six columns:
 
 ```text
-chr snp bp pos A1 A2
+CHR SNP CM BP A1 A2
 ```
+
+where `CHR` is the chromosome, `SNP` is the SNP identifier, `CM` is the genetic distance, `BP` is the base-pair position, and `A1` and `A2` are the two alleles.
+
+We recommend using the same `.bim` file as that used for the LD reference data. When population-specific LD matrices are constructed from two ancestry-specific reference panels, the `.bim` file from either population can be used, provided that the SNP identifiers, genomic build, and genomic positions are consistent with the input GWAS summary statistics and LD data.
 
 ### Gene annotation file
 
-The annotation file should contain four tab-separated columns without a header:
+The gene annotation file is used to define the genomic coordinates of each gene for SNP-to-gene mapping.
+
+The file should contain four tab-separated columns without a header:
 
 ```text
 chr start end gene.id
 ```
 
-The `extend` argument expands gene regions upstream and downstream in base pairs. A value of 50000 is recommended.
+For example:
+
+```text
+1	65419	71585	OR4F5
+1	134901	139379	AL627309.1
+1	367640	368634	OR4F29
+```
+The genes listed in this file define the set of genes evaluated throughout the downstream analysis. Therefore, a simple way to restrict or customise the genes included in the analysis is to modify the gene list in this annotation file.
+
+The chromosome and genomic coordinates should use the same genome build as the PLINK BIM file, GWAS summary statistics, and LD reference data.
 
 ### GWAS summary statistics
 
-Each population-specific GWAS summary statistics file should contain:
+Each population-specific GWAS summary statistics file should contain the following columns:
 
 ```text
 snp A1 A2 AF1 beta se P N
@@ -96,19 +92,18 @@ snp A1 A2 AF1 beta se P N
 
 The sample size column `N` is required. Accurate population-specific sample sizes should be provided because sample sizes are used to determine the contribution of population-specific association signals in the weighted ACAT combination.
 
-Although `multiBAT.combo()` performs internal numerical validation of GWAS fields, users should perform standard GWAS quality control before analysis. Recommended preprocessing includes:
+Although `multiBAT.combo()` performs internal numerical validation of GWAS fields, users should perform standard GWAS quality control before analysis. Recommended preprocessing includes: 
+    - removal of SNPs with missing or invalid effect sizes; 
+    - removal of SNPs with invalid standard errors; 
+    - allele frequency filtering; 
+    - imputation quality filtering where applicable; 
+    - removal of duplicated SNP identifiers.
 
-- removal of SNPs with missing or invalid effect sizes;
-- removal of SNPs with invalid standard errors;
-- allele frequency filtering;
-- imputation quality filtering where applicable;
-- removal of duplicated SNP identifiers.
-
-The internal checks are designed to prevent computational errors and do not replace standard GWAS quality control procedures.
+For more detailed guidance on GWAS summary statistic formatting and preparation, users may refer to the GCTA documentation (https://yanglab.westlake.edu.cn/software/gcta/#DataResource).
 
 ## LD matrix preparation
 
-`LD_matrix()` generates population-specific LD matrices using GCTB.
+For users starting from PLINK genotype reference data, `LD_matrix()` can be used to generate the population-specific gene-level LD matrices required by `multiBAT.combo()`.
 
 Example:
 
@@ -124,15 +119,55 @@ ldm_results <- LD_matrix(
 )
 ```
 
+The `extend` argument specifies the number of base pairs added to both the upstream and downstream boundaries of each gene. For example:
+
+```r
+extend = 50000
+```
+
+includes SNPs located within 50 kb upstream and 50 kb downstream of the annotated gene region.
+
+For each gene and population, `LD_matrix()` first extracts the corresponding genomic region from the PLINK reference panel and then uses GCTB to construct a full LD matrix. The underlying procedure is equivalent to:
+
+```bash
+plink --bfile <PLINK_PREFIX> \
+      --chr <CHR> \
+      --from-bp <START_EXTENDED> \
+      --to-bp <END_EXTENDED> \
+      --make-bed \
+      --out <GENE>.<POPULATION>
+
+gctb --bfile <GENE>.<POPULATION> \
+     --make-full-ldm \
+     --out <GENE>.<POPULATION>
+```
+
+where `<START_EXTENDED>` and `<END_EXTENDED>` are determined from the gene coordinates and the specified `extend` value.
+
+If no SNPs are available within a gene region after extraction, that gene is skipped for the corresponding population.
+
+`LD_matrix()` applies this procedure automatically to all genes in the annotation file and to both population-specific reference panels.
+
+As a reference for computational requirements, using 1000 Genomes Project Phase 3 reference data and approximately 20,000 genes, LD matrix construction required approximately 90 minutes per ancestry when four parallel tasks were used. 
+
+Users who already have compatible population-specific GCTB full LD matrices do not need to run `LD_matrix()` and can provide the existing LD matrix directories directly to `multiBAT.combo()`.
+
+LD matrices for different populations should be stored in separate directories. For each gene, the LD files should follow the naming pattern:
+
+<gene>.*ldm.full.info
+<gene>.*ldm.full.bin
+
+where <gene> must exactly match the gene identifier used in the gene annotation file.
+
 ## Gene-based association testing
 
-The main function is:
+The main analysis is performed using:
 
 ```r
 multiBAT.combo()
 ```
 
-Example:
+A standard analysis using the internal population-specific mBAT implementation can be run as follows:
 
 ```r
 res <- multiBAT.combo(
@@ -146,80 +181,35 @@ res <- multiBAT.combo(
     extend = 50000,
     prop = 0.9,
     af_threshold = 0.2,
-    run_gcta = FALSE
+    run_gcta = FALSE,
+    print_all_p = FALSE
 )
 ```
 
-When `run_gcta = FALSE`, the package calculates population-specific mBAT results internally in R.
+### Arguments
 
-The final association combines:
+| Argument            | Description                                                                                                                                                                                                                                                                           |
+| ------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `bim_file`          | Path to the PLINK BIM file used to provide SNP genomic positions and allele information.                                                                                                                                                                                              |
+| `map_file`          | Path to the headerless four-column gene annotation file containing chromosome, gene start position, gene end position, and gene identifier.                                                                                                                                           |
+| `assoc_pop1`        | Path to the GWAS summary statistics file for population 1.                                                                                                                                                                                                                            |
+| `assoc_pop2`        | Path to the GWAS summary statistics file for population 2.                                                                                                                                                                                                                            |
+| `LD_path_pop1`      | Directory containing the population 1 GCTB full LD matrices and corresponding `.info` files.                                                                                                                                                                                          |
+| `LD_path_pop2`      | Directory containing the population 2 GCTB full LD matrices and corresponding `.info` files.                                                                                                                                                                                          |
+| `result_prefix`     | Full output path and filename prefix. For example, `result_prefix = "results/BMI"` generates files beginning with `results/BMI`.                                                                                                                                                      |
+| `extend`            | Number of base pairs added to both the upstream and downstream boundaries of each annotated gene when assigning SNPs to genes. The default is `50000`, corresponding to 50 kb on each side. The same gene-region definition should be used when preparing the LD matrices.            |
+| `prop`              | Proportion of eigen-variance retained in the SVD-based calculation. The value must be greater than 0 and no greater than 1. The default is `0.9`.                                                                                                                                |
+| `af_threshold`      | Maximum allowed absolute difference between the effect-allele frequency in the GWAS summary statistics and the corresponding allele frequency in the LD reference after allele harmonisation. SNPs are retained when the difference is smaller than this value. The default is `0.2`. |
+| `run_gcta`          | Controls how the population-specific mBAT analyses are performed. With `FALSE`, population-specific mBAT statistics are calculated internally in R. With `TRUE`, GCTA is used for the two population-specific mBAT analyses. The default is `FALSE`.                                  |
+| `print_all_p`       | Controls whether intermediate joint and population-specific test statistics and P values are included in the main output file. The default is `FALSE`.                                                                                                                                |
+| `check_gwas_values` | Controls whether numeric GWAS quality control is performed before gene-based analysis. The default is `TRUE`.                                                                                                                                                                         |
+| `N_pop1`            | Optional population 1 sample size supplied directly by the user. When provided, this value is used instead of the sample size obtained from the `N` column of the population 1 GWAS summary statistics.                                                                               |
+| `N_pop2`            | Optional population 2 sample size supplied directly by the user. When provided, this value is used instead of the sample size obtained from the `N` column of the population 2 GWAS summary statistics.                                                                               |
+| `gcta_bin`          | GCTA executable name available in the system `PATH`, or the full path to the GCTA executable. Used only when `run_gcta = TRUE`. The default is `"gcta64"`.                                                                                                                            |
+| `plink_bfile_pop1`  | PLINK binary reference panel prefix for population 1. Required only when `run_gcta = TRUE`. The prefix should be supplied without the `.bed`, `.bim`, or `.fam` extension.                                                                                                            |
+| `plink_bfile_pop2`  | PLINK binary reference panel prefix for population 2. Required only when `run_gcta = TRUE`. The prefix should be supplied without the `.bed`, `.bim`, or `.fam` extension.                                                                                                            |
 
-```text
-P_multiBAT
-P_mBAT_pop1
-P_mBAT_pop2
-```
 
-using weighted ACAT.
-
-## Print all P values
-
-By default:
-
-```r
-print_all_p = FALSE
-```
-
-Only the final multiBAT-combo association statistics are written.
-
-When:
-
-```r
-print_all_p = TRUE
-```
-
-additional gene-level component statistics are reported, including intermediate population-specific and joint association P values.
-
-This option is recommended for users who want to inspect the contribution of each component test.
-
-## Sample size information
-
-By default, `multiBAT.combo()` obtains population-specific sample sizes from the GWAS summary statistics files using the sample size column:
-
-```text
-N
-```
-
-The sample size information is used in the weighted ACAT procedure to account for sample-size imbalance between populations and determine the contribution of population-specific association signals.
-
-Alternatively, users can directly specify population-specific sample sizes through:
-
-```r
-N_pop1
-N_pop2
-```
-
-in the `multiBAT.combo()` function. When provided, these user-specified values are used instead of the sample size information extracted from the GWAS summary statistics.
-
-Accurate population-specific sample sizes should be provided because they affect the weighting of population-specific components in the multiBAT-combo association framework.
-
-## Optional GCTA mBAT-combo integration
-
-When:
-
-```r
-run_gcta = TRUE
-```
-
-the package runs GCTA separately for the two populations and combines the resulting population-specific GCTA mBAT-combo P values with the joint multiBAT result.
-
-Required arguments include:
-
-```r
-gcta_bin
-plink_bfile_pop1
-plink_bfile_pop2
-```
 ## Output files
 
 `multiBAT.combo()` generates output files according to the selected analysis mode and output options.
