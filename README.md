@@ -90,7 +90,7 @@ Each population-specific GWAS summary statistics file should contain the followi
 snp A1 A2 AF1 beta se P N
 ```
 
-The sample size column `N` is required. Accurate population-specific sample sizes should be provided because sample sizes are used to determine the contribution of population-specific association signals in the weighted ACAT combination.
+The sample size column `N` is required. Accurate population-specific sample sizes (or effect sample size for binary traits) should be provided because sample sizes are used to determine the contribution of population-specific association signals in the weighted ACAT combination.
 
 Although `multiBAT.combo()` performs internal numerical validation of GWAS fields, users should perform standard GWAS quality control before analysis. Recommended preprocessing includes: 
     - removal of SNPs with missing or invalid effect sizes; 
