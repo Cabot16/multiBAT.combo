@@ -154,8 +154,10 @@ Users who already have compatible population-specific GCTB full LD matrices do n
 
 LD matrices for different populations should be stored in separate directories. For each gene, the LD files should follow the naming pattern:
 
+```
 <gene>.*ldm.full.info
 <gene>.*ldm.full.bin
+```
 
 where <gene> must exactly match the gene identifier used in the gene annotation file.
 
