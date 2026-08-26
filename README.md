@@ -1,9 +1,30 @@
 # multiBAT.combo
 
 <!-- badges: start -->
+
 <!-- badges: end -->
 
-`multiBAT.combo` provides an R implementation of `multiBAT-combo`, a multi-ancestry gene-based association testing framework for complex trait discovery. The method integrates GWAS summary statistics and population-specific linkage disequilibrium (LD) information from multiple populations to improve gene-level discovery.
+`multiBAT.combo` provides an R implementation of `multiBAT-combo`, a multi-ancestry gene-based association testing framework for complex trait discovery. The method integrates population-specific GWAS summary statistics and linkage disequilibrium (LD) information to jointly evaluate gene-level association signals across populations.
+
+The standard workflow uses two population-specific GWAS summary statistics files together with ancestry-matched LD matrices. `multiBAT.combo()` combines the joint multi-ancestry multiBAT result with population-specific mBAT results using a weighted aggregated Cauchy association test (ACAT) to generate the final multiBAT-combo gene-level association P value.
+
+## Workflow overview
+
+A typical analysis consists of the following steps:
+
+1. Prepare population-specific GWAS summary statistics.
+2. Prepare ancestry-matched genotype reference panels.
+3. Generate population-specific gene-level LD matrices using `LD_matrix()`.
+4. Run `multiBAT.combo()` using the GWAS summary statistics and corresponding LD matrices.
+5. Examine the final gene-level association results in `<result_prefix>.multipop.txt`.
+
+The recommended workflow uses:
+
+```r
+run_gcta = FALSE
+```
+
+In this mode, population-specific mBAT statistics are calculated internally in R and no GCTA installation is required for the main association analysis.
 
 ## Installation
 
