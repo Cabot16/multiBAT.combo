@@ -466,7 +466,7 @@ res <- multiBAT.combo(
 
 head(res$multipop)
 ```
-This example uses the test data bundled with the package to verify that multiBAT.combo() can run successfully after installation.
+The bundled example data were extracted from the test dataset distributed with the original `mBAT-combo` implementation. A small subset was retained to provide a lightweight demonstration of the multiBAT.combo workflow.
 
 The bundled demonstration typically completes in less than 1 minute on a standard Linux system.
 
