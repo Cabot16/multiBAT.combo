@@ -20,7 +20,15 @@ A typical analysis consists of the following steps:
 
 ## Installation
 
-Install the source package locally with:
+Before installing `multiBAT.combo`, first install the required R package dependencies by running:
+
+```bash
+Rscript multiBAT.combo-main/install_dependencies.R
+```
+
+The script checks whether the required R packages are available in the current R environment and automatically installs any missing dependencies.
+
+After all dependencies have been installed successfully, install the source package locally with:
 
 ```r
 install.packages("multiBAT.combo-main", repos = NULL, type = "source")
