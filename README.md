@@ -18,6 +18,22 @@ A typical analysis consists of the following steps:
 4. Run `multiBAT.combo()` using the GWAS summary statistics and corresponding LD matrices.
 5. Examine the final gene-level association results in `<result_prefix>.multipop.txt`.
 
+## System requirements
+
+`multiBAT.combo` requires R and the following R packages:
+
+- `data.table`
+- `snpsettest`
+
+The `parallel` and `stats` packages are distributed with R and do not require separate installation.
+
+The following packages are suggested for package testing and development but are not required for standard analyses:
+
+- `testthat` (>= 3.0.0)
+- `withr`
+
+Before installing `multiBAT.combo`, users should run the dependency installation script described below.
+
 ## Installation
 
 Before installing `multiBAT.combo`, first install the required R package dependencies by running:
