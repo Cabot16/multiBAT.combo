@@ -50,12 +50,6 @@ After all dependencies have been installed successfully, install the source pack
 install.packages("multiBAT.combo-main", repos = NULL, type = "source")
 ```
 
-Alternatively:
-
-```r
-devtools::install()
-```
-
 ## External software requirements
 
 `multiBAT.combo()` requires population-specific LD matrices in GCTB format for gene-based association testing.
