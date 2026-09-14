@@ -20,6 +20,16 @@ A typical analysis consists of the following steps:
 
 ## System requirements
 
+`multiBAT.combo` is implemented in R and has been tested under the following software environment:
+
+* Operating system: CentOS Linux 7 (Core)
+* R: 4.5.1
+* GCTA: v1.94.1 (Linux)
+* GCTB: v2.01 Beta
+* PLINK: v1.9.0-b.8
+
+GCTA is required only when `run_gcta = TRUE`. GCTB and PLINK are required only when LD matrices are generated from PLINK genotype reference data using `LD_matrix()`.
+
 `multiBAT.combo` requires R (≥4.2) and the following R packages:
 
 - `data.table`
@@ -33,6 +43,8 @@ The following packages are suggested for package testing and development but are
 - `withr`
 
 Before installing `multiBAT.combo`, users should run the dependency installation script described below.
+
+
 
 ## Installation
 
@@ -49,6 +61,7 @@ After all dependencies have been installed successfully, install the source pack
 ```r
 install.packages("multiBAT.combo-main", repos = NULL, type = "source")
 ```
+Once the required R package dependencies are available, installation of multiBAT.combo typically takes less than 1 minute on a standard Linux system. Installation time for the required dependencies may vary depending on the R environment and network conditions.
 
 ## External software requirements
 
@@ -461,6 +474,8 @@ res <- multiBAT.combo(
 head(res$multipop)
 ```
 This example uses the test data bundled with the package to verify that multiBAT.combo() can run successfully after installation.
+
+The bundled demonstration typically completes in less than 1 minute on a standard Linux system.
 
 ### Expected output
 
