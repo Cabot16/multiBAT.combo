@@ -429,6 +429,7 @@ T_mBAT_pop2
 P_mBAT_pop2
 P_fastBAT_pop2
 P_mBATcombo_pop2
+```
 
 The final `P_multiBAT.combo` value reported by `multiBAT.combo()` is constructed based on mBAT-derived association statistics and combined with the joint multi-ancestry component using the weighted ACAT procedure.
 
