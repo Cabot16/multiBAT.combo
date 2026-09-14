@@ -448,18 +448,34 @@ res <- multiBAT.combo(
     map_file = file.path(data_dir, "hg19_v40_glist_Pat_v1.txt"),
     assoc_pop1 = file.path(data_dir, "test.ma"),
     assoc_pop2 = file.path(data_dir, "test2.ma"),
-    LD_path_pop1 = file.path(data_dir, "POP1_LD_Chr22"),
-    LD_path_pop2 = file.path(data_dir, "POP1_LD_Chr22"),
+    LD_path_pop1 = file.path(data_dir, "test_LD_Chr22", "pop1"),
+    LD_path_pop2 = file.path(data_dir, "test_LD_Chr22", "pop2"),
     result_prefix = result_prefix,
     extend = 50000,
     prop = 0.9,
     af_threshold = 1,
-    run_gcta = FALSE
+    run_gcta = FALSE,
+    print_all_p = TRUE
 )
 
 head(res$multipop)
 ```
 This example uses the test data bundled with the package to verify that multiBAT.combo() can run successfully after installation.
+
+### Expected output
+
+The demo analysis returns gene-level association results for two example genes, `BID` and `CCT8L2`. A representative output is shown below:
+
+| Gene | Chr | Start | End | No.SNPs_pop1 | No.SNPs_pop2 | No.SNPs_common | SNP_start | SNP_end | TopSNP_pop1 | TopSNP_Pvalue_pop1 | TopSNP_pop2 | TopSNP_Pvalue_pop2 | No.Eigenvalues | T_multiBAT | P_multiBAT | T_mBAT_pop1 | P_mBAT_pop1 | T_mBAT_pop2 | P_mBAT_pop2 | No.Eigenvalues_pop1 | No.Eigenvalues_pop2 | P_multiBAT.combo | P_multiBAT.combo_BH |
+|---|---:|---:|---:|---:|---:|---:|---:|---:|---|---:|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|
+| BID | 22 | 18216904 | 18257536 | 355 | NA | NA | NA | NA | rs5747353 | 0.00767941 | NA | NA | NA | NA | NA | 20.32169 | 0.5629248 | NA | NA | 22 | NA | 0.56292481 | 0.5629248 |
+| CCT8L2 | 22 | 17071641 | 17073700 | 187 | 187 | 187 | 17022605 | 17123175 | rs73159811 | 0.00179815 | rs73159811 | 0.00179815 | 25 | 37.0332 | 0.05731948 | 19.47855 | 0.1089971 | 19.47855 | 0.1089971 | 13 | 13 | 0.05733316 | 0.1146663 |
+
+The `NA` values in the `BID` row are intentional and are included to demonstrate how `multiBAT.combo` behaves when a valid gene-level result is unavailable for one ancestry. In this example, population 2 does not contribute a valid result for `BID`, and therefore the cross-ancestry multiBAT statistic cannot be calculated. The corresponding population-2 and multiBAT-related fields are reported as `NA`.
+
+When only one ancestry provides a valid mBAT result, `multiBAT.combo` retains the available ancestry-specific result rather than discarding the gene. For `BID`, the final `P_multiBAT.combo` therefore corresponds to the available population-1 mBAT P value.
+
+For `CCT8L2`, valid results are available for both populations. The output therefore includes the ancestry-specific mBAT statistics, the joint multiBAT statistic, and the final multiBAT-combo P value.
 
 ## Acknowledgements
 
