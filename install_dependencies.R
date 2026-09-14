@@ -1,18 +1,19 @@
 #!/usr/bin/env Rscript
 
 # install_dependencies.R
-# Run this script before installing multiBAT.combo:
-#   Rscript install_dependencies.R
 #
-# Place this file in the package root directory, next to DESCRIPTION.
+# Run before installing multiBAT.combo:
+#
+#   Rscript multiBAT.combo-main/install_dependencies.R
 
 options(repos = c(CRAN = "https://cloud.r-project.org"))
 
-# Whether to install packages listed only under Suggests.
-# Set to TRUE if you want to run examples/tests that require suggested packages.
 install_suggests <- FALSE
 
-# Locate this script and the package DESCRIPTION file.
+# ------------------------------------------------------------
+# Locate DESCRIPTION
+# ------------------------------------------------------------
+
 args <- commandArgs(trailingOnly = FALSE)
 file_arg <- grep("^--file=", args, value = TRUE)
 
@@ -28,9 +29,8 @@ description_file <- file.path(package_dir, "DESCRIPTION")
 if (!file.exists(description_file)) {
   stop(
     "DESCRIPTION was not found in:\n  ", package_dir,
-    "\n\nPlace install_dependencies.R in the package root directory ",
-    "(the same directory as DESCRIPTION) and run:\n",
-    "  Rscript install_dependencies.R"
+    "\n\nPlease place install_dependencies.R in the package root directory ",
+    "(the same directory as DESCRIPTION)."
   )
 }
 
@@ -38,13 +38,90 @@ cat("Package directory:\n  ", package_dir, "\n\n", sep = "")
 
 desc <- read.dcf(description_file)
 
+# ------------------------------------------------------------
+# Check R version
+# ------------------------------------------------------------
+
+if ("Depends" %in% colnames(desc)) {
+
+  depends_text <- desc[1, "Depends"]
+
+  if (!is.na(depends_text) && grepl("R\\s*\\(", depends_text)) {
+
+    r_entry <- trimws(
+      grep(
+        "^R\\s*\\(",
+        trimws(unlist(strsplit(depends_text, ","))),
+        value = TRUE
+      )
+    )
+
+    if (length(r_entry) > 0) {
+
+      constraint <- sub("^R\\s*\\((.*)\\)$", "\\1", r_entry)
+      constraint <- trimws(constraint)
+
+      m <- regexec(
+        "^\\s*(>=|<=|==|=|>|<)\\s*([^[:space:]]+)\\s*$",
+        constraint
+      )
+
+      parts <- regmatches(constraint, m)[[1]]
+
+      if (length(parts) == 3) {
+
+        op <- parts[2]
+        required_version <- parts[3]
+
+        cmp <- compareVersion(
+          as.character(getRversion()),
+          required_version
+        )
+
+        r_ok <- switch(
+          op,
+          ">=" = cmp >= 0,
+          "<=" = cmp <= 0,
+          "==" = cmp == 0,
+          "="  = cmp == 0,
+          ">"  = cmp > 0,
+          "<"  = cmp < 0
+        )
+
+        if (!r_ok) {
+          stop(
+            "R version requirement not satisfied.\n",
+            "Installed: ", getRversion(), "\n",
+            "Required: ", constraint
+          )
+        }
+
+        cat(
+          "[OK     ] R ",
+          getRversion(),
+          " (required ",
+          constraint,
+          ")\n\n",
+          sep = ""
+        )
+      }
+    }
+  }
+}
+
+# ------------------------------------------------------------
+# Read package dependencies
+# ------------------------------------------------------------
+
 fields <- c("Depends", "Imports", "LinkingTo")
+
 if (isTRUE(install_suggests)) {
   fields <- c(fields, "Suggests")
 }
 
-# Collect dependency specifications from DESCRIPTION.
-dep_text <- unlist(desc[1, intersect(fields, colnames(desc)), drop = TRUE])
+fields <- intersect(fields, colnames(desc))
+
+dep_text <- unlist(desc[1, fields, drop = TRUE])
 dep_text <- dep_text[!is.na(dep_text) & nzchar(dep_text)]
 
 if (length(dep_text) == 0) {
@@ -52,11 +129,16 @@ if (length(dep_text) == 0) {
   quit(status = 0)
 }
 
-dep_entries <- trimws(unlist(strsplit(paste(dep_text, collapse = ","), ",")))
+dep_entries <- trimws(
+  unlist(strsplit(paste(dep_text, collapse = ","), ","))
+)
+
 dep_entries <- dep_entries[nzchar(dep_entries)]
 
 parse_dependency <- function(x) {
+
   pkg <- trimws(sub("\\s*\\(.*\\)\\s*$", "", x))
+
   constraint <- NA_character_
 
   if (grepl("\\(", x)) {
@@ -71,25 +153,41 @@ parse_dependency <- function(x) {
   )
 }
 
-deps <- do.call(rbind, lapply(dep_entries, parse_dependency))
-deps <- deps[deps$package != "R" & nzchar(deps$package), , drop = FALSE]
-deps <- deps[!duplicated(deps$package), , drop = FALSE]
+deps <- do.call(
+  rbind,
+  lapply(dep_entries, parse_dependency)
+)
 
-if (nrow(deps) == 0) {
-  cat("No external R package dependencies were found in DESCRIPTION.\n")
-  quit(status = 0)
-}
+# Remove R itself
+deps <- deps[
+  deps$package != "R" & nzchar(deps$package),
+  ,
+  drop = FALSE
+]
+
+deps <- deps[
+  !duplicated(deps$package),
+  ,
+  drop = FALSE
+]
+
+# ------------------------------------------------------------
+# Version checking
+# ------------------------------------------------------------
 
 version_ok <- function(installed_version, constraint) {
+
   if (is.na(constraint) || !nzchar(constraint)) {
     return(TRUE)
   }
 
-  m <- regexec("^\\s*(>=|<=|==|=|>|<)\\s*([^[:space:]]+)\\s*$", constraint)
+  m <- regexec(
+    "^\\s*(>=|<=|==|=|>|<)\\s*([^[:space:]]+)\\s*$",
+    constraint
+  )
+
   parts <- regmatches(constraint, m)[[1]]
 
-  # If a constraint cannot be parsed, leave version validation to R during
-  # package installation rather than failing here.
   if (length(parts) != 3) {
     warning("Could not parse version constraint: ", constraint)
     return(TRUE)
@@ -97,7 +195,11 @@ version_ok <- function(installed_version, constraint) {
 
   op <- parts[2]
   required_version <- parts[3]
-  cmp <- compareVersion(as.character(installed_version), required_version)
+
+  cmp <- compareVersion(
+    as.character(installed_version),
+    required_version
+  )
 
   switch(
     op,
@@ -111,19 +213,30 @@ version_ok <- function(installed_version, constraint) {
   )
 }
 
+# ------------------------------------------------------------
+# Check dependencies
+# ------------------------------------------------------------
+
 installed <- installed.packages()
 to_install <- character(0)
 
 cat("Checking R package dependencies...\n\n")
 
 for (i in seq_len(nrow(deps))) {
+
   pkg <- deps$package[i]
   constraint <- deps$constraint[i]
 
   if (!(pkg %in% rownames(installed))) {
+
     cat(sprintf("[MISSING] %s", pkg))
-    if (!is.na(constraint)) cat(sprintf(" (%s)", constraint))
+
+    if (!is.na(constraint)) {
+      cat(sprintf(" (%s)", constraint))
+    }
+
     cat("\n")
+
     to_install <- c(to_install, pkg)
     next
   }
@@ -131,20 +244,42 @@ for (i in seq_len(nrow(deps))) {
   current_version <- packageVersion(pkg)
 
   if (!version_ok(current_version, constraint)) {
-    cat(sprintf(
-      "[UPDATE ] %s %s installed; required %s\n",
-      pkg, as.character(current_version), constraint
-    ))
+
+    cat(
+      sprintf(
+        "[UPDATE ] %s %s installed; required %s\n",
+        pkg,
+        as.character(current_version),
+        constraint
+      )
+    )
+
     to_install <- c(to_install, pkg)
+
   } else {
-    cat(sprintf("[OK     ] %s %s\n", pkg, as.character(current_version)))
+
+    cat(
+      sprintf(
+        "[OK     ] %s %s\n",
+        pkg,
+        as.character(current_version)
+      )
+    )
   }
 }
 
 to_install <- unique(to_install)
 
+# ------------------------------------------------------------
+# Install missing dependencies
+# ------------------------------------------------------------
+
 if (length(to_install) == 0) {
-  cat("\nAll required R package dependencies are already installed.\n")
+
+  cat(
+    "\nAll required R package dependencies are already installed.\n"
+  )
+
   quit(status = 0)
 }
 
@@ -157,17 +292,26 @@ cat(
 
 install.packages(
   to_install,
-  dependencies = c("Depends", "Imports", "LinkingTo")
+  dependencies = c(
+    "Depends",
+    "Imports",
+    "LinkingTo"
+  )
 )
 
-# Verify installation.
+# ------------------------------------------------------------
+# Verify installation
+# ------------------------------------------------------------
+
 failed <- character(0)
 
 for (i in seq_len(nrow(deps))) {
+
   pkg <- deps$package[i]
   constraint <- deps$constraint[i]
 
   if (!requireNamespace(pkg, quietly = TRUE)) {
+
     failed <- c(failed, pkg)
     next
   }
@@ -180,16 +324,19 @@ for (i in seq_len(nrow(deps))) {
 failed <- unique(failed)
 
 if (length(failed) > 0) {
+
   stop(
-    "\nThe following dependencies could not be installed or do not meet ",
-    "the required version:\n  ",
+    "\nThe following dependencies could not be installed ",
+    "or do not meet the required version:\n  ",
     paste(failed, collapse = ", "),
-    "\n\nCheck the messages above. If any dependency is hosted outside CRAN ",
-    "(for example, Bioconductor or GitHub), install it separately and rerun ",
-    "this script."
+    "\n\nPlease check the installation messages above."
   )
 }
 
-cat("\nAll required dependencies are installed successfully.\n")
-cat("You can now install the package, for example:\n")
-cat("  R CMD INSTALL .\n")
+cat(
+  "\nAll required dependencies were installed successfully.\n"
+)
+
+cat(
+  "\nYou can now install multiBAT.combo.\n"
+)
