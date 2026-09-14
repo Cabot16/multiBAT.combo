@@ -37,14 +37,7 @@ GCTA is required only when `run_gcta = TRUE`. GCTB and PLINK are required only w
 
 The `parallel` and `stats` packages are distributed with R and do not require separate installation.
 
-The following packages are suggested for package testing and development but are not required for standard analyses:
-
-- `testthat` (>= 3.0.0)
-- `withr`
-
 Before installing `multiBAT.combo`, users should run the dependency installation script described below.
-
-
 
 ## Installation
 
