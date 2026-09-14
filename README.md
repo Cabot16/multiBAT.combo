@@ -23,7 +23,7 @@ A typical analysis consists of the following steps:
 Install the source package locally with:
 
 ```r
-install.packages("multiBAT.combo_0.0.1.3000.tar.gz", repos = NULL, type = "source")
+install.packages("multiBAT.combo-main", repos = NULL, type = "source")
 ```
 
 Alternatively:
