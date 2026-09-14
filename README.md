@@ -20,7 +20,7 @@ A typical analysis consists of the following steps:
 
 ## System requirements
 
-`multiBAT.combo` requires R and the following R packages:
+`multiBAT.combo` requires R (≥4.2) and the following R packages:
 
 - `data.table`
 - `snpsettest`
